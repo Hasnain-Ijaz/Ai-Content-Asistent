@@ -9,7 +9,7 @@ st.write("Generate tailored posts, captions, and relevant hashtags using Groq LL
 
 # Sidebar - API Key Configuration
 st.sidebar.header("🔑 API Settings")
-api_key = st.sidebar.text_input("Enter Groq API Key", type="password")
+api_key = st.sidebar.text_input("Groq API Key", type="password")
 
 # Form Inputs
 with st.form("content_form"):
