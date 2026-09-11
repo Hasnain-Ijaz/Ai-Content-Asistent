@@ -52,11 +52,11 @@ if submit_button:
     api_key = st.secrets.get("GROQ_API_KEY", "")
 
     if not api_key:
-        st.error("Groq API key missing in Streamlit Secrets! Please verify 'GroqAPIKey' is configured in app settings.")
+        st.error("Groq API key missing in Streamlit Secrets! Please verify 'GROQ_API_KEY' is configured in app settings.")
     elif not topic:
         st.error("Please provide a topic for your content.")
     else:
-        with st.spinner("Connecting to Groq API and generating content..."):
+        with st.spinner("Generating your content..."):
             try:
                 client = Groq(api_key=api_key)
 
@@ -122,7 +122,7 @@ if submit_button:
                         # Clean out any leftover <think>...</think> tags if reasoning models were used
                         clean_content = re.sub(r'<think>.*?</think>', '', raw_content, flags=re.DOTALL).strip()
 
-                        st.success(f"Content Generated Successfully using {used_model}!")
+                        st.success("Content Generated Successfully!")
                         st.markdown("---")
                         
                         # Render cleaned output directly as formatted Markdown
@@ -142,4 +142,4 @@ if submit_button:
                         st.error("Failed to generate content with available active Groq models.")
 
             except Exception as e:
-                st.error(f"Groq API Connection Error: {str(e)}")
+                st.error(f"Connection Error: {str(e)}")
