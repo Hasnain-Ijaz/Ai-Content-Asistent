@@ -12,6 +12,13 @@ st.set_page_config(
 st.title("✍️ AI Content Assistant")
 st.write("Generate optimized social media posts, captions, and hashtags in seconds.")
 
+# Sidebar - Model selection
+st.sidebar.header("⚙️ Model Settings")
+selected_model = st.sidebar.selectbox(
+    "Preferred Groq Model",
+    ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+)
+
 # Main form for user selections
 with st.form("content_form"):
     col1, col2 = st.columns(2)
@@ -47,66 +54,81 @@ with st.form("content_form"):
 
 # Logic to handle content generation
 if submit_button:
-    # Fetch API Key from Streamlit Secrets using 'GroqAPIKey'
+    # Fetch API Key from Streamlit Secrets
     api_key = st.secrets.get("GroqAPIKey", "")
 
     if not api_key:
-        st.error("Groq API key missing in Streamlit Secrets! Please verify 'GroqAPIKey' is configured in app settings.")
+        st.error("Groq API key missing in Streamlit Secrets! Please verify 'GroqAPIKey' is configured in your Streamlit Cloud app settings.")
     elif not topic:
         st.error("Please provide a topic for your content.")
     else:
         with st.spinner("Generating your post..."):
-            try:
-                # Initialize Groq client with key from secrets
-                client = Groq(api_key=api_key)
+            # List of candidate models to try sequentially (Fallback Strategy)
+            candidate_models = [selected_model, "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+            # Preserve order while removing duplicate entries
+            candidate_models = list(dict.fromkeys(candidate_models))
 
-                # Construct prompt for Groq model
-                prompt = f"""
-                You are an expert social media content creator and copywriter.
-                Generate a high-performing post based on these exact constraints:
+            client = Groq(api_key=api_key)
+            prompt = f"""
+            You are an expert social media content creator and copywriter.
+            Generate a high-performing post based on these exact constraints:
 
-                - Content Type: {content_type}
-                - Platform: {platform}
-                - Topic: {topic}
-                - Target Audience: {target_audience if target_audience else "General Audience"}
-                - Tone: {tone}
+            - Content Type: {content_type}
+            - Platform: {platform}
+            - Topic: {topic}
+            - Target Audience: {target_audience if target_audience else "General Audience"}
+            - Tone: {tone}
 
-                Requirements:
-                1. Structure the post perfectly for the selected platform ({platform}).
-                2. Include a compelling hook in the first line.
-                3. Body content formatted cleanly with line breaks or bullet points where appropriate.
-                4. A clear Call-To-Action (CTA).
-                5. A dedicated section at the bottom with 5-10 highly relevant hashtags.
+            Requirements:
+            1. Structure the post perfectly for the selected platform ({platform}).
+            2. Include a compelling hook in the first line.
+            3. Body content formatted cleanly with line breaks or bullet points where appropriate.
+            4. A clear Call-To-Action (CTA).
+            5. A dedicated section at the bottom with 5-10 highly relevant hashtags.
 
-                Format output as Markdown.
-                """
+            Format output as Markdown.
+            """
 
-                # Request completion from Groq API using updated model string
-                response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[
-                        {"role": "system", "content": "You are a professional content creation assistant."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=1000
-                )
+            generated_content = None
+            used_model = ""
 
-                generated_content = response.choices[0].message.content
+            # Attempt API execution across available candidate models
+            for model_id in candidate_models:
+                try:
+                    response = client.chat.completions.create(
+                        model=model_id,
+                        messages=[
+                            {"role": "system", "content": "You are a professional content creation assistant."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.7,
+                        max_tokens=1000
+                    )
+                    generated_content = response.choices[0].message.content
+                    used_model = model_id
+                    break  # Success
+                except Exception as model_err:
+                    if "model_not_found" in str(model_err) or "404" in str(model_err):
+                        continue  # Try next fallback model
+                    else:
+                        st.error(f"API Error: {str(model_err)}")
+                        break
 
-                # Output generated content
-                st.success("Content Generated Successfully!")
+            if generated_content:
+                st.success(f"Content Generated Successfully using {used_model}!")
                 st.markdown("---")
                 st.markdown(generated_content)
                 st.markdown("---")
 
-                # Copy/Download convenience
+                # Post character count metric
+                st.caption(f"📊 Character Count: {len(generated_content)} characters")
+
+                # Download button
                 st.download_button(
                     label="📥 Download Post (.txt)",
                     data=generated_content,
                     file_name="generated_post.txt",
                     mime="text/plain"
                 )
-
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+            elif not generated_content:
+                st.error("All requested Groq models are currently unreachable. Please verify your API Key or check Groq service status.")
