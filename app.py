@@ -56,7 +56,7 @@ if submit_button:
     elif not topic:
         st.error("Please enter a topic.")
     else:
-        # Clean spinner text without API key mention
+        # Simple spinner text
         with st.spinner("Generating your content..."):
             try:
                 client = Groq(api_key=api_key)
@@ -73,33 +73,23 @@ if submit_button:
                     st.error("Service temporarily unavailable. Please try again.")
                 else:
                     prompt = f"""
-                    You are an elite copywriter. Generate content strictly following these rules:
-                    Do NOT write internal thoughts, reasoning steps, or <think> tags.
+                    You are an expert social media content creator and copywriter.
+                    Generate a high-performing post based on these exact constraints:
 
-                    ### OUTPUT FORMAT REQUIREMENTS:
-                    Create TWO distinct sections separated clearly:
-
-                    SECTION 1: METADATA
-                    ## 📌 Post Overview
-                    - **Platform:** {platform}
-                    - **Target Audience:** {target_audience if target_audience else "General Audience"}
-                    - **Tone:** {tone}
-                    - **Type:** {content_type}
-
-                    SECTION 2: POST CONTENT
-                    ## ✍️ Post Content
-
-                    [Write post here]:
-                    1. HOOK: Single attention-grabbing first line.
-                    2. SPACING: Short, scannable paragraphs (1-2 sentences).
-                    3. BULLETS: Bold key points for easy reading.
-                    4. VALUE: Zero filler words. Pinpoint exact facts.
-                    5. CTA: Clear action step at the bottom.
-                    6. HASHTAGS: 5-8 relevant hashtags at the end.
-
-                    Constraints:
-                    - Topic: {topic}
+                    - Content Type: {content_type}
                     - Platform: {platform}
+                    - Topic: {topic}
+                    - Target Audience: {target_audience if target_audience else "General Audience"}
+                    - Tone: {tone}
+
+                    Requirements:
+                    1. Include a compelling hook on the first line.
+                    2. Clean body content formatted with short, scannable paragraphs and bold bullet points.
+                    3. Clear Call-To-Action (CTA).
+                    4. A dedicated section at the bottom with 5-8 relevant hashtags.
+                    5. Do NOT write internal thoughts, reasoning steps, or <think> tags.
+
+                    Format output in clean Markdown.
                     """
 
                     raw_output = None
@@ -124,32 +114,21 @@ if submit_button:
                         # Clean reasoning tags
                         clean_content = re.sub(r'<think>.*?</think>', '', raw_output, flags=re.DOTALL).strip()
 
-                        # Separate overview and post content
-                        sections = clean_content.split("## ✍️ Post Content")
-                        
-                        metadata_part = sections[0].strip() if len(sections) > 1 else "## 📌 Post Overview"
-                        post_part = sections[1].strip() if len(sections) > 1 else clean_content
-
                         # Display success notification
                         st.success("Content generated successfully!")
+                        st.markdown("---")
+                        
+                        # Direct clean output (No tabs or sections)
+                        st.markdown(clean_content)
+                        st.markdown("---")
 
-                        # UI Tabs (Same exact layout)
-                        tab1, tab2, tab3 = st.tabs(["👁️ Formatted View", "📋 Copy Code", "📊 Post Details"])
-
-                        with tab1:
-                            st.markdown(post_part)
-
-                        with tab2:
-                            st.code(post_part, language="markdown")
-
-                        with tab3:
-                            st.markdown(metadata_part)
-                            st.caption(f"Character Count: {len(post_part)} characters")
+                        # Character count & Download button
+                        st.caption(f"📊 Character Count: {len(clean_content)} characters")
 
                         st.download_button(
                             label="📥 Download Post (.txt)",
-                            data=post_part,
-                            file_name="social_post.txt",
+                            data=clean_content,
+                            file_name="generated_post.txt",
                             mime="text/plain"
                         )
                     else:
