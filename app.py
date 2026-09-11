@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 from groq import Groq
 
@@ -59,11 +60,11 @@ if submit_button:
             try:
                 client = Groq(api_key=api_key)
 
-                # Fetch dynamic active models directly from Groq
+                # Fetch active models dynamically
                 models_data = client.models.list()
                 active_models = [m.id for m in models_data.data if hasattr(m, 'id')]
 
-                # Filter out whisper (audio) and guardrail models
+                # Exclude whisper/audio or vision-only models
                 text_models = [
                     m for m in active_models 
                     if not any(x in m.lower() for x in ["whisper", "guard", "vision"])
@@ -72,30 +73,34 @@ if submit_button:
                 if not text_models:
                     st.error("No active text completion models found on Groq.")
                 else:
+                    # Construct strict prompt ensuring separated details and post content
                     prompt = f"""
                     You are an expert social media content creator and copywriter.
-                    Generate a high-performing post based on these exact constraints:
+                    Generate content strictly following this exact output format without writing any internal thoughts, reasoning steps, or <think> tags.
 
+                    ### Output Structure Requirements:
+                    1. First section MUST be titled: ## 📌 Post Details & Metadata
+                       List the Platform, Content Type, Topic, Target Audience, and Tone in clean bullet points.
+                    
+                    2. Second section MUST be titled: ## ✍️ Generated Social Media Post
+                       Write the full post here. 
+                       - Must have an engaging hook on the first line.
+                       - Clean body structure with clear spacing and bullet points.
+                       - Include a Call-To-Action (CTA).
+                       - End with a dedicated hashtag line (5-10 relevant hashtags).
+
+                    Constraints:
                     - Content Type: {content_type}
                     - Platform: {platform}
                     - Topic: {topic}
                     - Target Audience: {target_audience if target_audience else "General Audience"}
                     - Tone: {tone}
-
-                    Requirements:
-                    1. Structure the post perfectly for the selected platform ({platform}).
-                    2. Include a compelling hook in the first line.
-                    3. Body content formatted cleanly with line breaks or bullet points where appropriate.
-                    4. A clear Call-To-Action (CTA).
-                    5. A dedicated section at the bottom with 5-10 highly relevant hashtags.
-
-                    Format output as Markdown.
                     """
 
-                    generated_content = None
+                    raw_content = None
                     used_model = ""
 
-                    # Loop through live available models dynamically
+                    # Loop through available text models
                     for model_id in text_models:
                         try:
                             response = client.chat.completions.create(
@@ -105,30 +110,36 @@ if submit_button:
                                     {"role": "user", "content": prompt}
                                 ],
                                 temperature=0.7,
-                                max_tokens=1000
+                                max_tokens=1200
                             )
-                            generated_content = response.choices[0].message.content
+                            raw_content = response.choices[0].message.content
                             used_model = model_id
-                            break  # Exit loop on first successful generation
+                            break
                         except Exception:
-                            continue  # Move to next available live model
+                            continue
 
-                    if generated_content:
+                    if raw_content:
+                        # Clean out any leftover <think>...</think> tags if reasoning models were used
+                        clean_content = re.sub(r'<think>.*?</think>', '', raw_content, flags=re.DOTALL).strip()
+
                         st.success(f"Content Generated Successfully using {used_model}!")
                         st.markdown("---")
-                        st.markdown(generated_content)
+                        
+                        # Render cleaned output directly as formatted Markdown
+                        st.markdown(clean_content)
+                        
                         st.markdown("---")
+                        st.caption(f"📊 Total Output Character Count: {len(clean_content)} characters")
 
-                        st.caption(f"📊 Character Count: {len(generated_content)} characters")
-
+                        # Download button
                         st.download_button(
                             label="📥 Download Post (.txt)",
-                            data=generated_content,
+                            data=clean_content,
                             file_name="generated_post.txt",
                             mime="text/plain"
                         )
                     else:
-                        st.error("Failed to generate content with available active Groq models. Please check your API key status on console.groq.com.")
+                        st.error("Failed to generate content with available active Groq models.")
 
             except Exception as e:
                 st.error(f"Groq API Connection Error: {str(e)}")
