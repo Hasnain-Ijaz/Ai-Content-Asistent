@@ -1,93 +1,117 @@
 import streamlit as st
 from groq import Groq
 
-# Page Configuration
-st.set_page_config(page_title="AI Content Assistant", page_icon="✍️", layout="centered")
+# Page configuration
+st.set_page_config(
+    page_title="AI Content Assistant",
+    page_icon="✍️",
+    layout="centered"
+)
 
+# Custom title and header
 st.title("✍️ AI Content Assistant")
-st.write("Generate tailored posts, captions, and relevant hashtags using Groq LLM.")
+st.write("Generate optimized social media posts, captions, and hashtags in seconds.")
 
-# Sidebar - API Key Configuration
-st.sidebar.header("🔑 API Settings")
-api_key = st.sidebar.text_input("Groq API Key", type="password")
+# Sidebar for Groq API Key input
+st.sidebar.header("🔑 API Configuration")
+api_key_input = st.sidebar.text_input(
+    "Groq API Key",
+    type="password",
+    help="Get a free key from console.groq.com"
+)
 
-# Form Inputs
+# Main form for user selections
 with st.form("content_form"):
     col1, col2 = st.columns(2)
     
     with col1:
         content_type = st.selectbox(
             "Content Type",
-            ["Social Media Post", "Blog Intro", "Product Description", "Newsletter Entry", "Ad Copy"]
-        )
-        platform = st.selectbox(
-            "Target Platform",
-            ["LinkedIn", "Twitter/X", "Instagram", "Facebook", "Medium"]
-        )
-        tone = st.selectbox(
-            "Tone of Voice",
-            ["Professional", "Casual & Friendly", "Persuasive", "Informative", "Humorous", "Inspirational"]
+            ["Social Media Post", "Educational Thread", "Promotional / Ad Copy", "Product Launch", "Newsletter / Short Article"]
         )
         
+        platform = st.selectbox(
+            "Target Platform",
+            ["LinkedIn", "Instagram", "Twitter / X", "Facebook", "YouTube Shorts / Reels Script"]
+        )
+        
+        tone = st.selectbox(
+            "Tone of Voice",
+            ["Professional & Authoritative", "Casual & Friendly", "Engaging & Conversational", "Witty & Humorous", "Persuasive & High-Energy"]
+        )
+
     with col2:
-        topic = st.text_input("Topic / Main Focus", placeholder="e.g., AI in Web Development")
-        target_audience = st.text_input("Target Audience", placeholder="e.g., Developers, Freelancers")
+        topic = st.text_input(
+            "Topic / Main Idea",
+            placeholder="e.g. 5 tips for learning Python in 2026"
+        )
+        
+        target_audience = st.text_input(
+            "Target Audience",
+            placeholder="e.g. Beginner developers, college students"
+        )
 
-    submit_btn = st.form_submit_button("Generate Content 🚀")
+    submit_button = st.form_submit_button("✨ Generate Content")
 
-# Function to generate content via Groq API
-def generate_content(api_key, content_type, platform, topic, target_audience, tone):
-    client = Groq(api_key=api_key)
-    
-    prompt = f"""
-    You are an expert digital content creator.
-    Generate a complete post based on these specifications:
-    - Content Type: {content_type}
-    - Target Platform: {platform}
-    - Topic: {topic}
-    - Target Audience: {target_audience}
-    - Tone: {tone}
-
-    Format the response clearly with three dedicated sections:
-    1. **Post Content** (Optimized for {platform})
-    2. **Catchy Caption**
-    3. **Relevant Hashtags** (Provide 5 to 10 relevant hashtags)
-    """
-
-   
-response = client.chat.completions.create(
-    model="llama-3.1-8b-instant",  # Highly reliable free-tier model
-    messages=[
-        {"role": "system", "content": "You are a professional content creation assistant."},
-        {"role": "user", "content": prompt}
-    ],
-    temperature=0.7,
-    max_tokens=1000
-)
-    )
-    return response.choices[0].message.content
-
-# Processing output
-if submit_btn:
-    if not api_key:
-        st.error("Please enter your Groq API Key in the sidebar to proceed.")
-    elif not topic or not target_audience:
-        st.warning("Please fill in both Topic and Target Audience.")
+# Logic to handle content generation
+if submit_button:
+    if not api_key_input:
+        st.error("Please enter your Groq API key in the sidebar.")
+    elif not topic:
+        st.error("Please provide a topic for your content.")
     else:
-        with st.spinner("Crafting your content..."):
+        with st.spinner("Generating your post..."):
             try:
-                result = generate_content(api_key, content_type, platform, topic, target_audience, tone)
-                
+                # Initialize Groq client
+                client = Groq(api_key=api_key_input)
+
+                # Construct prompt for Groq model
+                prompt = f"""
+                You are an expert social media content creator and copywriter.
+                Generate a high-performing post based on these exact constraints:
+
+                - Content Type: {content_type}
+                - Platform: {platform}
+                - Topic: {topic}
+                - Target Audience: {target_audience if target_audience else "General Audience"}
+                - Tone: {tone}
+
+                Requirements:
+                1. Structure the post perfectly for the selected platform ({platform}).
+                2. Include a compelling hook in the first line.
+                3. Body content formatted cleanly with line breaks or bullet points where appropriate.
+                4. A clear Call-To-Action (CTA).
+                5. A dedicated section at the bottom with 5-10 highly relevant hashtags.
+
+                Format output as Markdown.
+                """
+
+                # Request completion from Groq API
+                response = client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=[
+                        {"role": "system", "content": "You are a professional content creation assistant."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=1000
+                )
+
+                generated_content = response.choices[0].message.content
+
+                # Output generated content
                 st.success("Content Generated Successfully!")
-                st.subheader("📝 Your Output:")
-                st.markdown(result)
-                
-                # Download button for generated post
+                st.markdown("---")
+                st.markdown(generated_content)
+                st.markdown("---")
+
+                # Copy/Download convenience
                 st.download_button(
-                    label="📥 Download Content as Text File",
-                    data=result,
-                    file_name=f"{platform.lower().replace('/', '_')}_post.txt",
+                    label="📥 Download Post (.txt)",
+                    data=generated_content,
+                    file_name="generated_post.txt",
                     mime="text/plain"
                 )
+
             except Exception as e:
-                st.error(f"Error generating content: {e}")
+                st.error(f"An error occurred: {str(e)}")
