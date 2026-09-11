@@ -54,11 +54,16 @@ def generate_content(api_key, content_type, platform, topic, target_audience, to
     3. **Relevant Hashtags** (Provide 5 to 10 relevant hashtags)
     """
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
-        max_tokens=1000,
+   
+response = client.chat.completions.create(
+    model="llama-3.1-8b-instant",  # Highly reliable free-tier model
+    messages=[
+        {"role": "system", "content": "You are a professional content creation assistant."},
+        {"role": "user", "content": prompt}
+    ],
+    temperature=0.7,
+    max_tokens=1000
+)
     )
     return response.choices[0].message.content
 
