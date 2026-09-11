@@ -81,9 +81,9 @@ if submit_button:
                 Format output as Markdown.
                 """
 
-                # Request completion from Groq API
+                # Request completion from Groq API using updated model string
                 response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": "You are a professional content creation assistant."},
                         {"role": "user", "content": prompt}
