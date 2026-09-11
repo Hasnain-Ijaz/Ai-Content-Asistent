@@ -9,18 +9,18 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom title and header
+# Title Header
 st.title("✍️ AI Content Assistant")
-st.write("Generate optimized social media posts, captions, and hashtags in seconds.")
+st.write("Generate high-converting, ultra-clean social media posts in seconds.")
 
-# Main form for user selections
+# Input Form
 with st.form("content_form"):
     col1, col2 = st.columns(2)
     
     with col1:
         content_type = st.selectbox(
             "Content Type",
-            ["Social Media Post", "Educational Thread", "Promotional / Ad Copy", "Product Launch", "Newsletter / Short Article"]
+            ["Social Media Post", "Educational Thread", "Promotional / Ad Copy", "Product Launch", "Short Article Summary"]
         )
         
         platform = st.selectbox(
@@ -30,13 +30,13 @@ with st.form("content_form"):
         
         tone = st.selectbox(
             "Tone of Voice",
-            ["Professional & Authoritative", "Casual & Friendly", "Engaging & Conversational", "Witty & Humorous", "Persuasive & High-Energy"]
+            ["Professional & Authoritative", "Casual & Friendly", "Direct & High-Impact", "Witty & Humorous", "Persuasive & Energetic"]
         )
 
     with col2:
         topic = st.text_input(
             "Topic / Main Idea",
-            placeholder="e.g. 5 tips for learning Python in 2026"
+            placeholder="e.g. 5 tips for learning MERN Stack"
         )
         
         target_audience = st.text_input(
@@ -44,63 +44,66 @@ with st.form("content_form"):
             placeholder="e.g. Beginner developers, college students"
         )
 
-    submit_button = st.form_submit_button("✨ Generate Content")
+    submit_button = st.form_submit_button("✨ Generate Post")
 
-# Logic to handle content generation
+# Generation Logic
 if submit_button:
-    # Fetch API Key from Streamlit Secrets
+    # Reading variable GROQ_API_KEY from Secrets
     api_key = st.secrets.get("GROQ_API_KEY", "")
 
     if not api_key:
-        st.error("Groq API key missing in Streamlit Secrets! Please verify 'GROQ_API_KEY' is configured in app settings.")
+        st.error("API Key missing in Secrets! Please check app settings.")
     elif not topic:
-        st.error("Please provide a topic for your content.")
+        st.error("Please enter a topic.")
     else:
-        with st.spinner("Connecting to Groq API and generating content..."):
+        # Clean spinner text without API key mention
+        with st.spinner("Generating your content..."):
             try:
                 client = Groq(api_key=api_key)
 
-                # Fetch active models dynamically
+                # Fetch dynamic live text models
                 models_data = client.models.list()
                 active_models = [m.id for m in models_data.data if hasattr(m, 'id')]
-
-                # Exclude whisper/audio or vision-only models
                 text_models = [
                     m for m in active_models 
                     if not any(x in m.lower() for x in ["whisper", "guard", "vision"])
                 ]
 
                 if not text_models:
-                    st.error("No active text completion models found on Groq.")
+                    st.error("Service temporarily unavailable. Please try again.")
                 else:
-                    # Construct strict prompt ensuring separated details and post content
                     prompt = f"""
-                    You are an expert social media content creator and copywriter.
-                    Generate content strictly following this exact output format without writing any internal thoughts, reasoning steps, or <think> tags.
+                    You are an elite copywriter. Generate content strictly following these rules:
+                    Do NOT write internal thoughts, reasoning steps, or <think> tags.
 
-                    ### Output Structure Requirements:
-                    1. First section MUST be titled: ## 📌 Post Details & Metadata
-                       List the Platform, Content Type, Topic, Target Audience, and Tone in clean bullet points.
-                    
-                    2. Second section MUST be titled: ## ✍️ Generated Social Media Post
-                       Write the full post here. 
-                       - Must have an engaging hook on the first line.
-                       - Clean body structure with clear spacing and bullet points.
-                       - Include a Call-To-Action (CTA).
-                       - End with a dedicated hashtag line (5-10 relevant hashtags).
+                    ### OUTPUT FORMAT REQUIREMENTS:
+                    Create TWO distinct sections separated clearly:
+
+                    SECTION 1: METADATA
+                    ## 📌 Post Overview
+                    - **Platform:** {platform}
+                    - **Target Audience:** {target_audience if target_audience else "General Audience"}
+                    - **Tone:** {tone}
+                    - **Type:** {content_type}
+
+                    SECTION 2: POST CONTENT
+                    ## ✍️ Post Content
+
+                    [Write post here]:
+                    1. HOOK: Single attention-grabbing first line.
+                    2. SPACING: Short, scannable paragraphs (1-2 sentences).
+                    3. BULLETS: Bold key points for easy reading.
+                    4. VALUE: Zero filler words. Pinpoint exact facts.
+                    5. CTA: Clear action step at the bottom.
+                    6. HASHTAGS: 5-8 relevant hashtags at the end.
 
                     Constraints:
-                    - Content Type: {content_type}
-                    - Platform: {platform}
                     - Topic: {topic}
-                    - Target Audience: {target_audience if target_audience else "General Audience"}
-                    - Tone: {tone}
+                    - Platform: {platform}
                     """
 
-                    raw_content = None
-                    used_model = ""
+                    raw_output = None
 
-                    # Loop through available text models
                     for model_id in text_models:
                         try:
                             response = client.chat.completions.create(
@@ -109,37 +112,48 @@ if submit_button:
                                     {"role": "system", "content": "You are a professional content creation assistant."},
                                     {"role": "user", "content": prompt}
                                 ],
-                                temperature=0.7,
+                                temperature=0.6,
                                 max_tokens=1200
                             )
-                            raw_content = response.choices[0].message.content
-                            used_model = model_id
+                            raw_output = response.choices[0].message.content
                             break
                         except Exception:
                             continue
 
-                    if raw_content:
-                        # Clean out any leftover <think>...</think> tags if reasoning models were used
-                        clean_content = re.sub(r'<think>.*?</think>', '', raw_content, flags=re.DOTALL).strip()
+                    if raw_output:
+                        # Clean reasoning tags
+                        clean_content = re.sub(r'<think>.*?</think>', '', raw_output, flags=re.DOTALL).strip()
 
-                        st.success(f"Content Generated Successfully using {used_model}!")
-                        st.markdown("---")
+                        # Separate overview and post content
+                        sections = clean_content.split("## ✍️ Post Content")
                         
-                        # Render cleaned output directly as formatted Markdown
-                        st.markdown(clean_content)
-                        
-                        st.markdown("---")
-                        st.caption(f"📊 Total Output Character Count: {len(clean_content)} characters")
+                        metadata_part = sections[0].strip() if len(sections) > 1 else "## 📌 Post Overview"
+                        post_part = sections[1].strip() if len(sections) > 1 else clean_content
 
-                        # Download button
+                        # Display success notification
+                        st.success("Content generated successfully!")
+
+                        # UI Tabs (Same exact layout)
+                        tab1, tab2, tab3 = st.tabs(["👁️ Formatted View", "📋 Copy Code", "📊 Post Details"])
+
+                        with tab1:
+                            st.markdown(post_part)
+
+                        with tab2:
+                            st.code(post_part, language="markdown")
+
+                        with tab3:
+                            st.markdown(metadata_part)
+                            st.caption(f"Character Count: {len(post_part)} characters")
+
                         st.download_button(
                             label="📥 Download Post (.txt)",
-                            data=clean_content,
-                            file_name="generated_post.txt",
+                            data=post_part,
+                            file_name="social_post.txt",
                             mime="text/plain"
                         )
                     else:
-                        st.error("Failed to generate content with available active Groq models.")
+                        st.error("Unable to generate content right now. Please try again.")
 
             except Exception as e:
-                st.error(f"Groq API Connection Error: {str(e)}")
+                st.error("An error occurred while generating content. Please try again.")
