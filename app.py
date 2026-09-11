@@ -56,7 +56,7 @@ if submit_button:
     elif not topic:
         st.error("Please enter a topic.")
     else:
-        # Simple spinner without exposing API details
+        # Clean spinner text without API key mention
         with st.spinner("Generating your content..."):
             try:
                 client = Groq(api_key=api_key)
@@ -133,7 +133,7 @@ if submit_button:
                         # Display success notification
                         st.success("Content generated successfully!")
 
-                        # UI Tabs for clean layout
+                        # UI Tabs (Same exact layout)
                         tab1, tab2, tab3 = st.tabs(["👁️ Formatted View", "📋 Copy Code", "📊 Post Details"])
 
                         with tab1:
