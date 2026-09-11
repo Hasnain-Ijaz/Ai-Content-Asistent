@@ -49,7 +49,7 @@ with st.form("content_form"):
 # Logic to handle content generation
 if submit_button:
     # Fetch API Key from Streamlit Secrets
-    api_key = st.secrets.get("GroqAPIKey", "")
+    api_key = st.secrets.get("Groq API Key", "")
 
     if not api_key:
         st.error("Groq API key missing in Streamlit Secrets! Please verify 'GroqAPIKey' is configured in app settings.")
